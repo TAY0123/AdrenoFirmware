@@ -7,6 +7,15 @@ extern "C" {
 #endif
 /* Modern A6xx/A7xx wire profile. Legacy and A8xx table formats are excluded. */
 typedef struct {uint64_t hz;uint32_t vote;} AdrenoHfiPerformanceLevel;
+/* Fixed bandwidth message shared by A6xx, A7xx and A8xx. The pointers each
+ * name the full wire arrays, including zero-filled unused slots. Callers
+ * supply actual command-db addresses, masks and packed BCM votes. */
+typedef struct {
+    unsigned bandwidth_count, cnoc_count, ddr_count;
+    uint32_t cnoc_wait_mask, ddr_wait_mask;
+    const uint32_t *cnoc_addresses, (*cnoc_data)[6]; /* [6], [2][6] */
+    const uint32_t *ddr_addresses, (*ddr_data)[8];   /* [8], [16][8] */
+} AdrenoHfiBandwidth;
 typedef struct {
     unsigned gpu_count,gmu_count;
     AdrenoHfiPerformanceLevel gpu[16],gmu[4];

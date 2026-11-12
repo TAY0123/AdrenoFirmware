@@ -13,12 +13,9 @@ static int valid_active_frequency(uint64_t hz, uint64_t previous_hz)
     return hz > previous_hz && hz % 1000 == 0 && hz / 1000 <= UINT32_MAX;
 }
 
-AdrenoHfiStatus AdrenoHfiEncodeA8xxPerformance(const AdrenoHfiA8xxPerformance *table,
-    uint32_t *message_id, uint32_t *payload, size_t capacity, size_t *payload_words)
+AdrenoHfiStatus AdrenoHfiValidateA8xxPerformance(const AdrenoHfiA8xxPerformance *table)
 {
-    if (!payload_words) return AdrenoHfiInvalid;
-    *payload_words = 0;
-    if (!table || !message_id || !payload || table->version != AdrenoHfiA8xxPerformanceVersion ||
+    if (!table || table->version != AdrenoHfiA8xxPerformanceVersion ||
         !table->gpu || table->gpu_count < 2 || table->gpu_count > AdrenoHfiA8xxMaxGpuLevels ||
         !table->gmu || table->gmu_count < 2 || table->gmu_count > AdrenoHfiA8xxMaxGmuLevels ||
         table->gpu[0].hz || table->gmu[0].hz || table->gpu[0].dependency_vote != UINT32_MAX) {
@@ -29,6 +26,17 @@ AdrenoHfiStatus AdrenoHfiEncodeA8xxPerformance(const AdrenoHfiA8xxPerformance *t
     }
     for (size_t i = 1; i < table->gmu_count; ++i) {
         if (!valid_active_frequency(table->gmu[i].hz, table->gmu[i - 1].hz)) return AdrenoHfiInvalid;
+    }
+    return AdrenoHfiSuccess;
+}
+
+AdrenoHfiStatus AdrenoHfiEncodeA8xxPerformance(const AdrenoHfiA8xxPerformance *table,
+    uint32_t *message_id, uint32_t *payload, size_t capacity, size_t *payload_words)
+{
+    if (!payload_words) return AdrenoHfiInvalid;
+    *payload_words = 0;
+    if (!message_id || !payload || AdrenoHfiValidateA8xxPerformance(table) != AdrenoHfiSuccess) {
+        return AdrenoHfiInvalid;
     }
 
     size_t words = 6 + GxStride * table->gpu_count + CxStride * table->gmu_count;

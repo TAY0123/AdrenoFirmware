@@ -29,6 +29,9 @@ typedef struct {
     size_t gmu_count;
 } AdrenoHfiA8xxPerformance;
 
+/* Validate the version, level counts and frequency rules used by the encoder. */
+AdrenoHfiStatus AdrenoHfiValidateA8xxPerformance(const AdrenoHfiA8xxPerformance *);
+
 /* Encode the A8xx version-0 performance table for AdrenoHfiSend. The returned
  * payload excludes the wire header and queue padding. Each input array has
  * an off entry at zero Hz followed by at least one strictly increasing OPP.
@@ -40,6 +43,32 @@ typedef struct {
  * zero and both *message_id and the payload remain unchanged. */
 AdrenoHfiStatus AdrenoHfiEncodeA8xxPerformance(const AdrenoHfiA8xxPerformance *,
     uint32_t *message_id, uint32_t *payload, size_t capacity, size_t *payload_words);
+
+typedef struct {
+    AdrenoHfiA8xxPerformance performance;
+    AdrenoHfiBandwidth bandwidth;
+} AdrenoHfiA8xxTablesConfig;
+
+typedef struct {
+    AdrenoHfiStartup sequence;
+} AdrenoHfiA8xxTablesState;
+
+/* Program the two mandatory A8xx startup tables. Both tables are validated
+ * before either is sent. Performance must receive a matching successful ACK
+ * before bandwidth is published. On success, result.stage is Bandwidth and
+ * both table bits are set. Feature configuration and core start follow this
+ * step in the full firmware startup sequence.
+ *
+ * The caller owns a zero-initialized single-attempt state and serializes all
+ * calls. Power, clocks, the ready GMU/HFI controller, coherent shared queues,
+ * active native4K mappings, and fault handling are already established.
+ * Services provide monotonic time, bounded waits and ongoing health checks.
+ * Verified platform OPP and bandwidth inputs stay immutable. All state,
+ * callback and DMA storage stays disjoint and owned, including after success.
+ * An attempted sequence failure poisons the state and HFI session. The owner
+ * must arrange recovery before releasing or reusing any resources. */
+AdrenoHfiStartupStatus AdrenoHfiA8xxProgramTables(AdrenoHfiA8xxTablesState *, AdrenoHfi *,
+    const AdrenoHfiA8xxTablesConfig *, const AdrenoHfiStartupServices *, AdrenoHfiStartupResult *);
 
 #ifdef __cplusplus
 }
